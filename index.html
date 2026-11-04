@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Customer Feedback</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f3f5;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 450px;
+    margin: 30px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px #0002;
+}
+
+h2 {
+    text-align: center;
+}
+
+label {
+    display: block;
+    margin-top: 18px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 14px;
+    margin-top: 8px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 22px;
+    background: #222;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:disabled {
+    background: #999;
+}
+
+.error {
+    color: red;
+    font-size: 13px;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+}
+
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Customer Feedback</h2>
+
+    <label>Mobile Number</label>
+
+    <input
+        type="tel"
+        id="phone"
+        maxlength="10"
+        inputmode="numeric"
+        autocomplete="tel"
+        placeholder="Enter 10-digit mobile number"
+    >
+
+    <label>Order Type</label>
+
+    <select id="orderType">
+        <option value="">Select order type</option>
+        <option value="1">Takeaway</option>
+        <option value="2">Dine-in</option>
+    </select>
+
+    <p id="error" class="error"></p>
+
+    <button id="submitBtn" onclick="submitFeedback()">
+        SUBMIT
+    </button>
+
+    <div id="output" style="display:none">
+
+        <div class="result">
+            <strong>Order ID</strong>
+            <h2 id="oi"></h2>
+        </div>
+
+        <div class="result">
+            <strong>Generated JSON</strong>
+            <pre id="json"></pre>
+        </div>
+
+        <div class="result">
+            <strong>Base64</strong>
+            <pre id="encoded"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+// =====================================================
+// CONFIGURATION
+// =====================================================
+
+const STORE_ID = "91KSF617";
+const SM = "4.0";
+
+// Authorized test endpoint
+const SURVEY_URL =
+    "https://customer.kfc-listens.com/jfe/form/SV_8bHC0noyvM3jPWC";
+
+// =====================================================
+// GENERATE DATA
+// =====================================================
+
+function generateData() {
+
+    const phone =
+        document.getElementById("phone").value.trim();
+
+    const orderType =
+        document.getElementById("orderType").value;
+
+    const error =
+        document.getElementById("error");
+
+    error.textContent = "";
+
+    // Validate phone
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+        error.textContent =
+            "Please enter a valid 10-digit mobile number.";
+        return null;
+    }
+
+    // Validate order type
+    if (!orderType) {
+        error.textContent =
+            "Please select Takeaway or Dine-in.";
+        return null;
+    }
+
+    // Order ID: 900 to 999
+    const oi = 900 + Number(phone.slice(-2));
+
+    // Current local date and time
+    const now = new Date();
+
+    const pad = n =>
+        String(n).padStart(2, "0");
+
+    const date =
+        `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+    const time =
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.000`;
+
+    const dtm =
+        `${date}T${time}`;
+
+    // Build JSON
+    const data = {
+        S: STORE_ID,
+        OI: String(oi),
+        D: date,
+        TM: time,
+        DTM: dtm,
+        TI: String(oi),
+        OT: orderType,
+        SM: SM,
+        PH: phone
+    };
+
+    return data;
+}
+
+// =====================================================
+// BASE64 ENCODING
+// =====================================================
+
+function encodeData(data) {
+
+    const jsonData = JSON.stringify(data);
+
+    const bytes =
+        new TextEncoder().encode(jsonData);
+
+    let binary = "";
+
+    bytes.forEach(byte => {
+        binary += String.fromCharCode(byte);
+    });
+
+    const encoded = btoa(binary);
+
+    return {
+        jsonData,
+        encoded
+    };
+}
+
+// =====================================================
+// SUBMIT
+// =====================================================
+
+function submitFeedback() {
+
+    const data = generateData();
+
+    if (!data) return;
+
+    const result = encodeData(data);
+
+    // Display generated test data
+    document.getElementById("oi").textContent =
+        data.OI;
+
+    document.getElementById("json").textContent =
+        JSON.stringify(data, null, 4);
+
+    document.getElementById("encoded").textContent =
+        result.encoded;
+
+    document.getElementById("output").style.display =
+        "block";
+
+    // Construct authorized test URL
+    const testURL =
+        `${SURVEY_URL}?Q_EED=${encodeURIComponent(result.encoded)}`;
+
+    // Open test endpoint only
+    window.location.href = testURL;
+}
+
+</script>
+
+</body>
+</html>
